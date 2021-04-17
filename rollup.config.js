@@ -12,4 +12,7 @@ export default {
   },
   external: ['obsidian'],
   plugins: [typescript(), nodeResolve({ browser: true }), commonjs()],
+  watch: {
+    include: 'src/**/*',
+  },
 };
