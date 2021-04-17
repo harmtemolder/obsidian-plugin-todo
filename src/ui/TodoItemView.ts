@@ -9,6 +9,7 @@ enum TodoItemViewPane {
   Inbox,
   Someday,
 }
+
 export interface TodoItemViewProps {
   todos: TodoItem[];
   openFile: (filePath: string) => void;
@@ -83,21 +84,38 @@ export class TodoItemView extends ItemView {
       this.setViewState(newState);
     };
 
+    const handleDragEnter = (event: DragEvent) => {
+      debugger;
+    };
+
+    const handleDrop = (event: Event) => {
+      event.preventDefault();
+      debugger;
+    };
+
     container.createDiv(`todo-item-view-toolbar-item${activeClass(TodoItemViewPane.Today)}`, (el) => {
       el.appendChild(RenderIcon(Icon.Today, 'Today'));
       el.onClickEvent(() => setActivePane(TodoItemViewPane.Today));
+      // el.addEventListener('dragenter', handleDragEnter);
+      el.addEventListener('drop', handleDrop);
     });
     container.createDiv(`todo-item-view-toolbar-item${activeClass(TodoItemViewPane.Scheduled)}`, (el) => {
       el.appendChild(RenderIcon(Icon.Scheduled, 'Scheduled'));
       el.onClickEvent(() => setActivePane(TodoItemViewPane.Scheduled));
+      // el.addEventListener('dragenter', handleDragEnter);
+      // el.addEventListener('drop', handleDrop);
     });
     container.createDiv(`todo-item-view-toolbar-item${activeClass(TodoItemViewPane.Inbox)}`, (el) => {
       el.appendChild(RenderIcon(Icon.Inbox, 'Inbox'));
       el.onClickEvent(() => setActivePane(TodoItemViewPane.Inbox));
+      el.addEventListener('dragenter', handleDragEnter);
+      // el.addEventListener('drop', handleDrop);
     });
     container.createDiv(`todo-item-view-toolbar-item${activeClass(TodoItemViewPane.Someday)}`, (el) => {
       el.appendChild(RenderIcon(Icon.Someday, 'Someday / Maybe'));
       el.onClickEvent(() => setActivePane(TodoItemViewPane.Someday));
+      el.addEventListener('dragenter', handleDragEnter);
+      el.addEventListener('drop', handleDrop);
     });
   }
 
@@ -107,6 +125,7 @@ export class TodoItemView extends ItemView {
       .sort(this.sortByActionDate)
       .forEach((todo) => {
         container.createDiv('todo-item-view-item', (el) => {
+          el.setAttribute('draggable', 'true');
           el.createDiv('todo-item-view-item-checkbox', (el) => {
             el.createEl('input', { type: 'checkbox' }, (el) => {
               el.checked = todo.status === TodoItemStatus.Done;
