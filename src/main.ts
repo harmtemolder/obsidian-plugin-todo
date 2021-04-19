@@ -39,7 +39,7 @@ export default class TodoPlugin extends Plugin {
           this.todoIndex.setStatus(todo, newStatus);
         },
       };
-      this.view = new TodoItemView(leaf, props);
+      this.view = new TodoItemView(this, leaf, props);
       return this.view;
     });
 

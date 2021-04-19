@@ -2,6 +2,7 @@ import { ItemView, MarkdownRenderer, WorkspaceLeaf } from 'obsidian';
 import { VIEW_TYPE_TODO } from '../constants';
 import { TodoItem, TodoItemStatus } from '../model/TodoItem';
 import { RenderIcon, Icon } from '../ui/icons';
+import type TodoPlugin from '../main';
 
 enum TodoItemViewPane {
   Today,
@@ -23,8 +24,9 @@ interface TodoItemViewState {
 export class TodoItemView extends ItemView {
   private props: TodoItemViewProps;
   private state: TodoItemViewState;
+  private plugin: TodoPlugin;
 
-  constructor(leaf: WorkspaceLeaf, props: TodoItemViewProps) {
+  constructor(plugin: TodoPlugin, leaf: WorkspaceLeaf, props: TodoItemViewProps) {
     super(leaf);
     this.props = props;
     this.state = {
@@ -84,38 +86,41 @@ export class TodoItemView extends ItemView {
       this.setViewState(newState);
     };
 
-    const handleDragEnter = (event: DragEvent) => {
-      debugger;
-    };
-
-    const handleDrop = (event: Event) => {
-      event.preventDefault();
-      debugger;
-    };
-
     container.createDiv(`todo-item-view-toolbar-item${activeClass(TodoItemViewPane.Today)}`, (el) => {
       el.appendChild(RenderIcon(Icon.Today, 'Today'));
       el.onClickEvent(() => setActivePane(TodoItemViewPane.Today));
-      // el.addEventListener('dragenter', handleDragEnter);
-      el.addEventListener('drop', handleDrop);
+      el.addEventListener('dragenter', this.handleDragEnter);
+      el.addEventListener('dragover', this.handleDragOver);
+      el.addEventListener('dragleave', this.handleDragLeave);
+      el.addEventListener('drop', this.handleDrop);
+      el.setAttribute('data-pane-name', 'Today');
     });
     container.createDiv(`todo-item-view-toolbar-item${activeClass(TodoItemViewPane.Scheduled)}`, (el) => {
       el.appendChild(RenderIcon(Icon.Scheduled, 'Scheduled'));
       el.onClickEvent(() => setActivePane(TodoItemViewPane.Scheduled));
-      // el.addEventListener('dragenter', handleDragEnter);
-      // el.addEventListener('drop', handleDrop);
+      el.addEventListener('dragenter', this.handleDragEnter);
+      el.addEventListener('dragover', this.handleDragOver);
+      el.addEventListener('dragleave', this.handleDragLeave);
+      el.addEventListener('drop', this.handleDrop);
+      el.setAttribute('data-pane-name', 'Scheduled');
     });
     container.createDiv(`todo-item-view-toolbar-item${activeClass(TodoItemViewPane.Inbox)}`, (el) => {
       el.appendChild(RenderIcon(Icon.Inbox, 'Inbox'));
       el.onClickEvent(() => setActivePane(TodoItemViewPane.Inbox));
-      el.addEventListener('dragenter', handleDragEnter);
-      // el.addEventListener('drop', handleDrop);
+      el.addEventListener('dragenter', (e) => this.handleDragEnter(e));
+      el.addEventListener('dragover', (e) => this.handleDragOver(e));
+      el.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+      el.addEventListener('drop', (e) => this.handleDrop(e));
+      el.setAttribute('data-pane-name', 'Inbox');
     });
     container.createDiv(`todo-item-view-toolbar-item${activeClass(TodoItemViewPane.Someday)}`, (el) => {
       el.appendChild(RenderIcon(Icon.Someday, 'Someday / Maybe'));
       el.onClickEvent(() => setActivePane(TodoItemViewPane.Someday));
-      el.addEventListener('dragenter', handleDragEnter);
-      el.addEventListener('drop', handleDrop);
+      el.addEventListener('dragenter', (e) => this.handleDragEnter(e));
+      el.addEventListener('dragover', (e) => this.handleDragOver(e));
+      el.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+      el.addEventListener('drop', (e) => this.handleDrop(e));
+      el.setAttribute('data-pane-name', 'Someday / Maybe');
     });
   }
 
@@ -126,6 +131,9 @@ export class TodoItemView extends ItemView {
       .forEach((todo) => {
         container.createDiv('todo-item-view-item', (el) => {
           el.setAttribute('draggable', 'true');
+          el.addEventListener('dragstart', (event) => {
+            this.handleDragStart(event, todo);
+          });
           el.createDiv('todo-item-view-item-checkbox', (el) => {
             el.createEl('input', { type: 'checkbox' }, (el) => {
               el.checked = todo.status === TodoItemStatus.Done;
@@ -196,5 +204,42 @@ export class TodoItemView extends ItemView {
 
   private openFile(todo: TodoItem): void {
     this.props.openFile(todo.sourceFilePath);
+  }
+
+  private handleDragStart = (event: DragEvent, todo: TodoItem): void => {
+    event.dataTransfer.setData('application/json', JSON.stringify(todo));
+    event.dataTransfer.effectAllowed = 'move';
+  }
+
+  private handleDragEnter = (event: DragEvent): void => {
+    event.stopImmediatePropagation();
+    event.preventDefault();
+  }
+
+  private handleDragOver = (event: DragEvent): void => {
+    event.stopImmediatePropagation();
+    event.preventDefault();
+  }
+
+  private handleDragLeave = (event: DragEvent): void => {
+    event.stopImmediatePropagation();
+    event.preventDefault();
+  }
+
+  private handleDrop = (event: DragEvent): void => {
+    event.stopImmediatePropagation();
+    event.preventDefault();
+
+    const targetElement = (<HTMLElement>event.currentTarget);
+
+    if (targetElement.classList.contains('active')) return;
+
+    const targetPane = targetElement.getAttribute('data-pane-name');
+
+    event.dataTransfer.dropEffect = 'move';
+
+    let todo: TodoItem = new TodoItem();
+    Object.assign(todo, JSON.parse(event.dataTransfer.getData('application/json')));
+
   }
 }
