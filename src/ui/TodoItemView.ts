@@ -1,7 +1,9 @@
 import { ItemView, MarkdownRenderer, WorkspaceLeaf } from 'obsidian';
 import { VIEW_TYPE_TODO } from '../constants';
 import { TodoItem, TodoItemStatus } from '../model/TodoItem';
-import { RenderIcon, Icon } from '../ui/icons';
+import { RenderIcon, Icon } from './icons';
+import type TodoPlugin from '../main';
+import { TodoMap } from '../model/TodoIndex';
 
 enum TodoItemViewPane {
   Today,
@@ -9,8 +11,10 @@ enum TodoItemViewPane {
   Inbox,
   Someday,
 }
+
 export interface TodoItemViewProps {
   todos: TodoItem[];
+  todoMap: TodoMap;
   openFile: (filePath: string) => void;
   toggleTodo: (todo: TodoItem, newStatus: TodoItemStatus) => void;
 }
@@ -20,11 +24,13 @@ interface TodoItemViewState {
 }
 
 export class TodoItemView extends ItemView {
+  private plugin: TodoPlugin
   private props: TodoItemViewProps;
   private state: TodoItemViewState;
 
-  constructor(leaf: WorkspaceLeaf, props: TodoItemViewProps) {
+  constructor(plugin: TodoPlugin, leaf: WorkspaceLeaf, props: TodoItemViewProps) {
     super(leaf);
+    this.plugin = plugin;
     this.props = props;
     this.state = {
       activePane: TodoItemViewPane.Today,
@@ -101,31 +107,56 @@ export class TodoItemView extends ItemView {
     });
   }
 
-  private renderItems(container: HTMLDivElement) {
-    this.props.todos
-      .filter(this.filterForState, this)
-      .sort(this.sortByActionDate)
-      .forEach((todo) => {
-        container.createDiv('todo-item-view-item', (el) => {
-          el.createDiv('todo-item-view-item-checkbox', (el) => {
-            el.createEl('input', { type: 'checkbox' }, (el) => {
-              el.checked = todo.status === TodoItemStatus.Done;
-              el.onClickEvent(() => {
-                this.toggleTodo(todo);
-              });
-            });
-          });
-          el.createDiv('todo-item-view-item-description', (el) => {
-            MarkdownRenderer.renderMarkdown(todo.description, el, todo.sourceFilePath, this);
-          });
-          el.createDiv('todo-item-view-item-link', (el) => {
-            el.appendChild(RenderIcon(Icon.Reveal, 'Open file'));
-            el.onClickEvent(() => {
-              this.openFile(todo);
-            });
+  private renderItem(container: HTMLDivElement, todo: TodoItem) {
+    container.createDiv('todo-item-view-item', (el) => {
+      el.createDiv('todo-item-view-item-checkbox', (el) => {
+        el.createEl('input', { type: 'checkbox' }, (el) => {
+          el.checked = todo.status === TodoItemStatus.Done;
+          el.onClickEvent(() => {
+            this.toggleTodo(todo);
           });
         });
       });
+      el.createDiv('todo-item-view-item-description', (el) => {
+        MarkdownRenderer.renderMarkdown(todo.description, el, todo.sourceFilePath, this);
+      });
+      el.createDiv('todo-item-view-item-link', (el) => {
+        el.appendChild(RenderIcon(Icon.Reveal, 'Open file'));
+        el.onClickEvent(() => {
+          this.openFile(todo);
+        });
+      });
+    });
+  }
+
+  private renderGroup(container: HTMLDivElement, filePath: string): HTMLDivElement {
+    const groupContainer = container.createDiv('todo-item-view-group', (el) => {
+      el.createEl('h3', {text: filePath});
+    });
+    return groupContainer;
+  }
+
+  private renderItems(container: HTMLDivElement) {
+    debugger;
+    if (this.plugin.settings.groupTasks) {
+      this.props.todoMap
+        .forEach((todos: TodoItem[], filePath: string): void => {
+          const groupContainer = this.renderGroup(container, filePath);
+          todos
+            .filter(this.filterForState, this)
+            .sort(this.sortByActionDate)
+            .forEach((todo) => {
+              this.renderItem(groupContainer, todo);
+            });
+        })
+    } else {
+      this.props.todos
+        .filter(this.filterForState, this)
+        .sort(this.sortByActionDate)
+        .forEach((todo) => {
+          this.renderItem(container, todo);
+        });
+    }
   }
 
   private filterForState(value: TodoItem, _index: number, _array: TodoItem[]): boolean {

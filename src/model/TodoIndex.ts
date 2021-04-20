@@ -2,20 +2,22 @@ import { Notice, TAbstractFile, TFile, Vault } from 'obsidian';
 import { TodoItem, TodoItemStatus } from '../model/TodoItem';
 import { TodoParser } from '../model/TodoParser';
 
-export class TodoIndex {
-  private vault: Vault;
-  private todos: Map<string, TodoItem[]>;
-  private listeners: ((todos: TodoItem[]) => void)[];
+export class TodoMap extends Map<string, TodoItem[]> {}
 
-  constructor(vault: Vault, listener: (todos: TodoItem[]) => void) {
-    this.vault = vault;
+export class TodoIndex {
+  public todos: Map<string, TodoItem[]>;
+  private vault: Vault;
+  private listeners: ((todoMap: TodoMap, todos: TodoItem[]) => void)[];
+
+  constructor(vault: Vault, listener: (todoMap: TodoMap, todos: TodoItem[]) => void) {
     this.todos = new Map<string, TodoItem[]>();
+    this.vault = vault;
     this.listeners = [listener];
   }
 
   async initialize(notify = false): Promise<void> {
     // TODO: persist index & last sync timestamp; only parse files that changed since then.
-    const todoMap = new Map<string, TodoItem[]>();
+    const todoMap = new TodoMap();
     let numberOfTodos = 0;
     const timeStart = new Date().getTime();
 
@@ -100,6 +102,6 @@ export class TodoIndex {
 
   private invokeListeners() {
     const todos = ([] as TodoItem[]).concat(...Array.from(this.todos.values()));
-    this.listeners.forEach((listener) => listener(todos));
+    this.listeners.forEach((listener) => listener(this.todos, todos));
   }
 }

@@ -2,7 +2,7 @@ import { App, Plugin, PluginManifest, TFile, WorkspaceLeaf } from 'obsidian';
 import { VIEW_TYPE_TODO } from './constants';
 import { TodoItemView, TodoItemViewProps } from './ui/TodoItemView';
 import { TodoItem, TodoItemStatus } from './model/TodoItem';
-import { TodoIndex } from './model/TodoIndex';
+import { TodoIndex, TodoMap } from './model/TodoIndex';
 import { DEFAULT_SETTINGS, TodoPluginSettings, TodoPluginSettingTab } from './settings';
 
 export default class TodoPlugin extends Plugin {
@@ -31,6 +31,7 @@ export default class TodoPlugin extends Plugin {
       const todos: TodoItem[] = [];
       const props = {
         todos: todos,
+        todoMap: this.todoIndex.todos,
         openFile: (filePath: string) => {
           const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
           this.app.workspace.splitActiveLeaf().openFile(file);
@@ -39,7 +40,7 @@ export default class TodoPlugin extends Plugin {
           this.todoIndex.setStatus(todo, newStatus);
         },
       };
-      this.view = new TodoItemView(leaf, props);
+      this.view = new TodoItemView(this, leaf, props);
       return this.view;
     });
 
@@ -69,10 +70,11 @@ export default class TodoPlugin extends Plugin {
     await this.todoIndex.initialize(notify);
   }
 
-  tick(todos: TodoItem[]): void {
+  tick(todoMap: TodoMap, todos: TodoItem[]): void {
     this.view.setProps((currentProps: TodoItemViewProps) => {
       return {
         ...currentProps,
+        todoMap: todoMap,
         todos: todos,
       };
     });
